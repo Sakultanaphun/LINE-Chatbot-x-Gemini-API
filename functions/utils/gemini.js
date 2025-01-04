@@ -1,20 +1,31 @@
-const { GoogleGenerativeAI, HarmBlockThreshold, HarmCategory  } = require("@google/generative-ai");
-const genAI = new GoogleGenerativeAI(process.env.API_KEY);
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 
-const textOnly = async (prompt) => {
-  // For text-only input, use the gemini-pro model
-  const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+const apiKey = process.env.GEMINI_API_KEY;
+const genAI = new GoogleGenerativeAI(apiKey);
+
+const model = genAI.getGenerativeModel({
+  model: "gemini-1.5-flash-8b",
+  systemInstruction: "คุณคือผู้เชี่ยวชาญด้านกฎหมาย การเมือง และการบริหารราชการไทย ที่ได้รับการรับรอง โดยเฉพาะอย่างยิ่งในระบบรัฐสภาและการบริหารพรรคการเมือง คุณมีความรู้เชิงลึกเกี่ยวกับการทำสัญญา การร่างหนังสือ และการจัดทำแบบฟอร์มต่าง ๆ คุณสามารถวิเคราะห์สถานการณ์ทางการเมืองอย่างเป็นกลาง พร้อมให้คำแนะนำที่สอดคล้องกับหลักธรรมาภิบาลและกฎหมาย คุณมีข้อมูลเกี่ยวกับนายอโนชา สกุลธนพันธ์ (โค้ชพรรคใหม่) และสามารถเสนอแนะแนวทางการทำงานที่เหมาะสมเพื่อพัฒนาสังคมและแก้ไขปัญหาความเดือดร้อนของประชาชน",
+});
+
+const generationConfig = {
+  temperature: 1,
+  topP: 0.95,
+  topK: 40,
+  maxOutputTokens: 8192,
+  responseMimeType: "text/plain",
+};
+
+const textOnly = async prompt => {
   const result = await model.generateContent(prompt);
   return result.response.text();
 };
 
-const multimodal = async (imageBinary) => {
-  // For text-and-image input (multimodal), use the gemini-pro-vision model
-  const model = genAI.getGenerativeModel({ model: "gemini-pro-vision" });
+const multimodal = async imageBinary => {
+  const visionModel = genAI.getGenerativeModel({ model: "gemini-pro-vision" });
   const prompt = "ช่วยบรรยายภาพนี้ให้หน่อย";
   const mimeType = "image/png";
 
-  // Convert image binary to a GoogleGenerativeAI.Part object.
   const imageParts = [
     {
       inlineData: {
@@ -24,55 +35,26 @@ const multimodal = async (imageBinary) => {
     }
   ];
 
-  const safetySettings = [
-    {
-      category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-      threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-    },
-    {
-      category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-      threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-    },
-    {
-      category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-      threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-    },
-    {
-      category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-      threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-    },
-  ];
-
-  const result = await model.generateContent([prompt, ...imageParts], safetySettings);
-  const text = result.response.text();
-  return text;
+  const result = await visionModel.generateContent([prompt, ...imageParts]);
+  return result.response.text();
 };
 
-const chat = async (prompt) => {
-  // For text-only input, use the gemini-pro model
-  const model = genAI.getGenerativeModel({ model: "gemini-pro" });
-  const chat = model.startChat({
+const chat = async prompt => {
+  const chatSession = model.startChat({
+    generationConfig,
     history: [
       {
         role: "user",
-        parts: [{ text: "สวัสดีจ้า" }],
+        parts: [{ text: "สวัสดีครับ" }],
       },
       {
         role: "model",
-        parts: [{ text: "สวัสดีครับ ผมชื่อตี๋ ผมเป็นผู้เชี่ยวชาญเกี่ยวกับ LINE API ที่ช่วยตอบคำถามและแบ่งปันความรู้ให้กับชุมขนนักพัฒนา" }],
-      },
-      {
-        role: "user",
-        parts: [{ text: "ปัจจุบันมี LINE API อะไรบ้างที่ใช้งานได้ในประเทศไทย" }],
-      },
-      {
-        role: "model",
-        parts: [{ text: "ปัจจุบันมีทั้ง Messaging API, LIFF, LINE Login, LINE Beacon, LINE Notify, LINE Pay, และ LINE MINI App ที่สามารถใช้งานในไทยได้ครับ" }],
+        parts: [{ text: "สวัสดีครับ" }],
       }
     ]
   });
 
-  const result = await chat.sendMessage(prompt);
+  const result = await chatSession.sendMessage(prompt);
   return result.response.text();
 };
 

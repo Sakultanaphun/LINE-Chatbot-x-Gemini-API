@@ -8,7 +8,6 @@ exports.webhook = onRequest(async (req, res) => {
     for (const event of events) {
       switch (event.type) {
         case "message":
-
           if (event.message.type === "text") {
             // const msg = await gemini.textOnly(event.message.text);
             const msg = await gemini.chat(event.message.text);
@@ -22,11 +21,11 @@ exports.webhook = onRequest(async (req, res) => {
             await line.reply(event.replyToken, [{ type: "text", text: msg }]);
             return res.end();
           }
-
           break;
       }
     }
+    return res.end();
   }
   
-  res.send(req.method);
+  return res.status(405).send('Method Not Allowed');
 });
